@@ -17,14 +17,64 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import ReportTable from "../ReportTable/ReportTable";
 import RecordInput from "../RecordInput/RecordInput";
+import io from "socket.io-client";
 
 const drawerWidth = 240;
+
+let data = [
+  {
+    startTime: "13:40",
+    endTime: "17:47",
+    stall: "1320",
+    stage: "Бурение",
+    comment: "Без замечаний",
+  },
+];
 
 function CustomDrawer(props) {
   const { window } = props;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
 
+  //Log
+  const [logData, setLogData] = React.useState(["", "", ""]);
+
+  // WebSockets
+  const [tableData, setTableData] = React.useState(data);
+  const [socket, setSocket] = React.useState(null);
+
+  React.useEffect(() => {
+    const newSocket = io("ws://localhost:8000");
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Connected to server");
+    });
+
+    newSocket.on("json_data", (data) => {
+      console.log(data);
+      try {
+        const message = JSON.parse(data);
+        setTableData((prev) => [...prev, message]);
+      } catch (error) {
+        console.error("Ошибка при парсинге JSON:", error);
+      }
+    });
+
+    newSocket.on("log", (data) => {
+      console.log(data);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("Disconnected from server");
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // Drawer
   const handleDrawerClose = () => {
     setIsClosing(true);
     setMobileOpen(false);
@@ -151,7 +201,11 @@ function CustomDrawer(props) {
       >
         <Toolbar />
         {/* Сюда пихать элементы */}
-        {panelNumber == 1 ? <ReportTable /> : <RecordInput />}
+        {panelNumber == 1 ? (
+          <ReportTable tableData={tableData} />
+        ) : (
+          <RecordInput logData={logData} />
+        )}
       </Box>
     </Box>
   );

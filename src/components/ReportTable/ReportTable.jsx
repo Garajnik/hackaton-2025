@@ -8,68 +8,21 @@ import Paper from "@mui/material/Paper";
 import { Box, Button, ButtonGroup } from "@mui/material";
 import xlsx from "json-as-xlsx";
 import { mkConfig, generateCsv, download } from "export-to-csv";
-import io from "socket.io-client";
-import React, { useState, useEffect, useRef } from "react";
 
-//Setting for Excel exporter
-let settings = {
-  fileName: "MySpreadsheet", // Name of the resulting spreadsheet
-  extraLength: 3, // A bigger number means that columns will be wider
-  writeMode: "writeFile", // The available parameters are 'WriteFile' and 'write'. This setting is optional. Useful in such cases https://docs.sheetjs.com/docs/solutions/output#example-remote-file
-  writeOptions: {}, // Style options from https://docs.sheetjs.com/docs/api/write-options
-  RTL: false, // Display the columns from right-to-left (the default value is false)
-};
-
-let data = [
-  {
-    startTime: "13:40",
-    endTime: "17:47",
-    stall: "1320",
-    stage: "Бурение",
-    comment: "Без замечаний",
-  },
-];
-
-export default function ReportTable() {
-  const [tableData, setTableData] = useState(data);
-  const [inputValue, setInputValue] = useState("");
-  const [socket, setSocket] = useState(null);
-
-  useEffect(() => {
-    const newSocket = io("ws://localhost:8000");
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => {
-      console.log("Connected to server");
-    });
-
-    newSocket.on("json_data", (data) => {
-      console.log(data);
-      try {
-        const message = JSON.parse(data);
-        setTableData((prev) => [...prev, message]);
-      } catch (error) {
-        console.error("Ошибка при парсинге JSON:", error);
-      }
-    });
-
-    newSocket.on("log", (data) => {
-      console.log(data);
-    });
-
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    });
-
-    return () => {
-      newSocket.disconnect();
-    };
-  }, []);
-
+export default function ReportTable({ tableData }) {
+  //Setting for Excel exporter
+  let settings = {
+    fileName: "Отчёт", // Name of the resulting spreadsheet
+    extraLength: 3, // A bigger number means that columns will be wider
+    writeMode: "writeFile", // The available parameters are 'WriteFile' and 'write'. This setting is optional. Useful in such cases https://docs.sheetjs.com/docs/solutions/output#example-remote-file
+    writeOptions: {}, // Style options from https://docs.sheetjs.com/docs/api/write-options
+    RTL: false, // Display the columns from right-to-left (the default value is false)
+  };
+  // Export to Excel
   const handleExcelExport = () => {
     let table = [
       {
-        sheet: "Отчёт",
+        sheet: "Лист 1",
         columns: [
           { label: "Время начала", value: "startTime" },
           { label: "Время конца", value: (row) => row.endTime },
