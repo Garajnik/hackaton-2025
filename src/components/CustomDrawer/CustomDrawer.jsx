@@ -96,7 +96,7 @@ function CustomDrawer(props) {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            Система составления отчётов "БУРЕЛОМ"
+            Система составления отчётов
           </Typography>
         </Toolbar>
       </AppBar>

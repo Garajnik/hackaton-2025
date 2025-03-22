@@ -7,18 +7,52 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import { Box, Button, ButtonGroup } from "@mui/material";
+import xlsx from "json-as-xlsx";
+import { mkConfig, generateCsv, download } from "export-to-csv";
 
-function createData(startTime, endTime, stall, stage, comment) {
-  return { startTime, endTime, stall, stage, comment };
-}
+//Setting for Excel exporter
+let settings = {
+  fileName: "MySpreadsheet", // Name of the resulting spreadsheet
+  extraLength: 3, // A bigger number means that columns will be wider
+  writeMode: "writeFile", // The available parameters are 'WriteFile' and 'write'. This setting is optional. Useful in such cases https://docs.sheetjs.com/docs/solutions/output#example-remote-file
+  writeOptions: {}, // Style options from https://docs.sheetjs.com/docs/api/write-options
+  RTL: false, // Display the columns from right-to-left (the default value is false)
+};
 
-const rows = [
-  createData("Frozen yoghurt", 159, 6.0, 24, 4.0),
-  createData("Ice cream sandwich", 237, 9.0, 37, 4.3),
-  createData("Eclair", 262, 16.0, 24, 6.0),
-  createData("Cupcake", 305, 3.7, 67, 4.3),
-  createData("Gingerbread", 356, 16.0, 49, 3.9),
+let data = [
+  {
+    startTime: "13:40",
+    endTime: "17:47",
+    stall: "1320",
+    stage: "Буреня",
+    comment: "Бур взорвался",
+  },
 ];
+
+const handleExcelExport = () => {
+  let table = [
+    {
+      sheet: "Отчёт",
+      columns: [
+        { label: "Время начала", value: "startTime" },
+        { label: "Время конца", value: (row) => row.endTime },
+        { label: "Забой", value: (row) => row.stall },
+        { label: "Этап", value: (row) => row.stage },
+        { label: "Комментарий", value: (row) => row.comment },
+      ],
+      content: data,
+    },
+  ];
+  xlsx(table, settings);
+};
+
+// Экспорт в CSV
+const csvConfig = mkConfig({ useKeysAsHeaders: true });
+
+const handleCSVExport = () => {
+  const csv = generateCsv(csvConfig)(data);
+  download(csvConfig)(csv);
+};
 
 export default function ReportTable() {
   return (
@@ -29,13 +63,13 @@ export default function ReportTable() {
             <TableRow>
               <TableCell>Время начала</TableCell>
               <TableCell align="right">Время окончания</TableCell>
-              <TableCell align="right">Запой</TableCell>
+              <TableCell align="right">Забой</TableCell>
               <TableCell align="right">Этап</TableCell>
               <TableCell align="right">Комментарий</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {data.map((row) => (
               <TableRow
                 key={row.startTime}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
@@ -55,8 +89,10 @@ export default function ReportTable() {
       <Box>
         <h1>Скачать в формате: </h1>
         <ButtonGroup variant="contained" aria-label="Basic button group">
-          <Button color="success">Excel</Button>
-          <Button>CSV</Button>
+          <Button color="success" onClick={handleExcelExport}>
+            Excel
+          </Button>
+          <Button onClick={handleCSVExport}>CSV</Button>
         </ButtonGroup>
       </Box>
     </>
