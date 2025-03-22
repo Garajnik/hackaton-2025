@@ -1,4 +1,3 @@
-import * as React from "react";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -9,6 +8,8 @@ import Paper from "@mui/material/Paper";
 import { Box, Button, ButtonGroup } from "@mui/material";
 import xlsx from "json-as-xlsx";
 import { mkConfig, generateCsv, download } from "export-to-csv";
+import io from "socket.io-client";
+import React, { useState, useEffect, useRef } from "react";
 
 //Setting for Excel exporter
 let settings = {
@@ -24,37 +25,72 @@ let data = [
     startTime: "13:40",
     endTime: "17:47",
     stall: "1320",
-    stage: "Буреня",
-    comment: "Бур взорвался",
+    stage: "Бурение",
+    comment: "Без замечаний",
   },
 ];
 
-const handleExcelExport = () => {
-  let table = [
-    {
-      sheet: "Отчёт",
-      columns: [
-        { label: "Время начала", value: "startTime" },
-        { label: "Время конца", value: (row) => row.endTime },
-        { label: "Забой", value: (row) => row.stall },
-        { label: "Этап", value: (row) => row.stage },
-        { label: "Комментарий", value: (row) => row.comment },
-      ],
-      content: data,
-    },
-  ];
-  xlsx(table, settings);
-};
-
-// Экспорт в CSV
-const csvConfig = mkConfig({ useKeysAsHeaders: true });
-
-const handleCSVExport = () => {
-  const csv = generateCsv(csvConfig)(data);
-  download(csvConfig)(csv);
-};
-
 export default function ReportTable() {
+  const [tableData, setTableData] = useState(data);
+  const [inputValue, setInputValue] = useState("");
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    const newSocket = io("ws://localhost:8000");
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Connected to server");
+    });
+
+    newSocket.on("json_data", (data) => {
+      console.log(data);
+      try {
+        const message = JSON.parse(data);
+        setTableData((prev) => [...prev, message]);
+      } catch (error) {
+        console.error("Ошибка при парсинге JSON:", error);
+      }
+    });
+
+    newSocket.on("log", (data) => {
+      console.log(data);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("Disconnected from server");
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  const handleExcelExport = () => {
+    let table = [
+      {
+        sheet: "Отчёт",
+        columns: [
+          { label: "Время начала", value: "startTime" },
+          { label: "Время конца", value: (row) => row.endTime },
+          { label: "Забой", value: (row) => row.stall },
+          { label: "Этап", value: (row) => row.stage },
+          { label: "Комментарий", value: (row) => row.comment },
+        ],
+        content: tableData,
+      },
+    ];
+    xlsx(table, settings);
+  };
+
+  // Экспорт в CSV
+  const csvConfig = mkConfig({ useKeysAsHeaders: true });
+
+  const handleCSVExport = () => {
+    const csv = generateCsv(csvConfig)(data);
+    download(csvConfig)(csv);
+  };
+
   return (
     <>
       <TableContainer component={Paper}>
@@ -69,7 +105,7 @@ export default function ReportTable() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row) => (
+            {tableData.map((row) => (
               <TableRow
                 key={row.startTime}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}

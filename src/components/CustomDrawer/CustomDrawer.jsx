@@ -54,17 +54,17 @@ function CustomDrawer(props) {
         <ListItem key={1} disablePadding>
           <ListItemButton onClick={() => handleDrawerClick(1)}>
             <ListItemIcon>
-              <MicIcon />
+              <DocumentScannerIcon />
             </ListItemIcon>
-            <ListItemText primary={"Запись"} />
+            <ListItemText primary={"Отчёт"} />
           </ListItemButton>
         </ListItem>
         <ListItem key={2} disablePadding>
           <ListItemButton onClick={() => handleDrawerClick(2)}>
             <ListItemIcon>
-              <DocumentScannerIcon />
+              <MicIcon />
             </ListItemIcon>
-            <ListItemText primary={"Отчёт"} />
+            <ListItemText primary={"Запись"} />
           </ListItemButton>
         </ListItem>
       </List>
@@ -151,7 +151,7 @@ function CustomDrawer(props) {
       >
         <Toolbar />
         {/* Сюда пихать элементы */}
-        {panelNumber == 1 ? <RecordInput /> : <ReportTable />}
+        {panelNumber == 1 ? <ReportTable /> : <RecordInput />}
       </Box>
     </Box>
   );
