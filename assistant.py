@@ -12,6 +12,17 @@ from datetime import datetime
 from openpyxl import Workbook, load_workbook
 import requests
 
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from flask_socketio import SocketIO, emit
+import time
+from threading import Thread
+from datetime import datetime
+
+app = Flask(__name__)
+CORS(app)  # Разрешаем CORS для всех доменов
+socketio = SocketIO(app, cors_allowed_origins="*")  # Разрешаем подключение WebSocket с любого домена
+sid = 0;
 
 # Создаем логгер
 logger = logging.getLogger(__name__)
@@ -34,8 +45,6 @@ file_handler.setFormatter(formatter)
 # Добавляем обработчик в логгер
 logger.addHandler(file_handler)
 
-
-
 # Функция для сохранения аудио в файл
 def save_audio_to_file(audio_data, file_name="recorded_audio"):
     with wave.open(f'sounds/{file_name}.wav', 'wb') as wf:
@@ -55,6 +64,7 @@ def main():
         'Обслуживание БУ': ['обслуживание бэйл', 'обслуживание был',
                             'обслуживание б у', 'обслуживание бы у'],
         'ЗБС': ['зэ бэст', 'за без'],
+        'этап': ['эта', 'это', 'этапп']
     }
 
     # Инициализация модели Vosk
@@ -135,17 +145,11 @@ def main():
                     # Применяем замены
                     modified_text = text
                     for correct_word, variants in data_as.items():
+                    # Логируем записаный текс и отправляем в лог на фронт
                         for variant in variants:
                             modified_text = modified_text.replace(variant, correct_word)
-                    print(modified_text, end=' ') ##########
-                    url = "https://127.0.0.1:8000/add"  # Замените на нужный URL
-                    data = {
-                        "text":modified_text
-                    }
-                    headers = {
-                        "Content-Type": "application/json"  # Указываем, что отправляем JSON
-                    }
-                    response = requests.post(url, json=data, headers=headers)
+                    print(modified_text, end=' ') 
+                    send_log(sid, modified_text)
                     results += modified_text + ' '
                     count_time = 0
 
@@ -159,10 +163,11 @@ def main():
                     time_str = now.strftime("%H-%M-%S")
                     if 'пятнадцать этап' in results:
                         logger.warning('ОТЧЕТНОСТЬ ' + results)
-                        make_otchet(results)
+                        # make_otchet(results)
+                        send_report(sid, results)
                     else:
                         logger.info(results)
-                    save_audio_to_file(sound, time_str)
+                    #save_audio_to_file(sound, time_str)
                     sound = b''
                     results = ''
 
@@ -175,7 +180,8 @@ def main():
             time_str = now.strftime("%H-%M-%S")
             if 'пятнадцать этап' in results:
                 logger.warning('ОТЧЕТНОСТЬ ' + results)
-                make_otchet(results)
+                # make_otchet(results)
+                send_report(sid, results)
             else:
                 logger.info(results)
             save_audio_to_file(sound, time_str)
@@ -184,12 +190,11 @@ def main():
         stream.close()
         mic.terminate()
 
-
 def make_otchet(data: str):
     parsed_data = parse(data)
 
     # Запись в JSON
-    with open(f'data/{parsed_data["starttime"].replace(":", "-")}.json', 'w', encoding='utf-8') as json_file:
+    with open(f'data/{parsed_data["startTime"].replace(":", "-")}.json', 'w', encoding='utf-8') as json_file:
         json.dump(parsed_data, json_file, ensure_ascii=False, indent=4)
 
     print("Данные записаны в файл data_info.json")
@@ -208,7 +213,7 @@ def make_otchet(data: str):
     # Запись данных в CSV
     with open(csv_file, 'a', newline='', encoding='utf-8') as csvfile:
         # Убедитесь, что fieldnames включает все ключи из parsed_data
-        fieldnames = ['starttime', 'zaboy', 'stage', 'comments']
+        fieldnames = ['startTime', 'stall', 'stage', 'comment']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         if not file_exists:
@@ -228,10 +233,10 @@ def make_otchet(data: str):
         # Если файл не существует, создаем новый
         wb = Workbook()
         ws = wb.active
-        ws.append(['starttime', 'zaboy', 'stage', 'comments'])  # Записываем заголовки
+        ws.append(['startTime', 'stall', 'stage', 'comment'])  # Записываем заголовки
 
     # Добавляем данные в файл
-    ws.append([parsed_data['starttime'], parsed_data['zaboy'], parsed_data['stage'], parsed_data['comments']])
+    ws.append([parsed_data['startTime'], parsed_data['stall'], parsed_data['stage'], parsed_data['comment']])
 
     # Сохраняем изменения в файл
     wb.save(xlsx_file)
@@ -242,7 +247,7 @@ def parse(data: str):
     words = [
         "КНБК",
         "СПО",
-        "бурения",
+        "Бурения",
         "Промывка",
         "Проработка",
         "Вспомогательные операции",
@@ -254,7 +259,7 @@ def parse(data: str):
         "Прочие работы",
         "Освоение",
         "ЗБС",
-        "Испытание"
+        "Испытания"
     ]
     data = data.split(' ')
     for i in range(len(data)-1):
@@ -266,20 +271,50 @@ def parse(data: str):
         if word.lower() in data[:3]:
             # Получаем текущее время и записываем его в строку
             data_info = {
-                'starttime': current_time,
-                'zaboy': 1000,
+                'startTime': current_time,
+                'stall': 1000,
                 'stage': word,
-                'comments': '',
+                'comment': '',
             }
             return data_info
     data_info = {
-            'starttime': current_time,
-            'zaboy': 1000,
-            'stage': 'НПВ',
-            'comments': str(' '.join(data)),
+            "startTime": current_time,
+            "stall": 1000,
+            "stage": "НПВ",
+            "comment": str(" ".join(data)),
         }
     return  data_info
 
+# Функция для отправки логов клиенту
+def send_log(sid,message):
+    log_data = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # Текущее время
+        "message": message
+    }
+    socketio.emit('log', log_data, room=sid)  # Отправляем лог клиенту
+
+def send_report(sid,message):
+    socketio.emit('report_data', json.dumps(parse(message)), room=sid)
+
+# Обработчик события подключения WebSocket
+@socketio.on('connect')
+def handle_connect():
+    sid = request.sid  # Получаем идентификатор сессии клиента
+    
+# Обработчик события отключения WebSocket
+@socketio.on('disconnect')
+def handle_disconnect():
+    sid = request.sid  # Получаем идентификатор сессии клиента
+    send_log(sid, "Client disconnected.")  # Логируем отключение клиента
+
+def run_server():
+    app.run(host="0.0.0.0", port=8000)
 
 if __name__ == "__main__":
+    # Запуск сервера в отдельном потоке
+    server_thread = Thread(target=run_server)
+    server_thread.start()
+
+    # Запуск записи голоса в основном потоке
     main()
+    

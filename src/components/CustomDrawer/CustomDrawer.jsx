@@ -21,15 +21,7 @@ import io from "socket.io-client";
 
 const drawerWidth = 240;
 
-let data = [
-  {
-    startTime: "13:40",
-    endTime: "17:47",
-    stall: "1320",
-    stage: "Бурение",
-    comment: "Без замечаний",
-  },
-];
+let data = [];
 
 function CustomDrawer(props) {
   const { window } = props;
@@ -37,32 +29,38 @@ function CustomDrawer(props) {
   const [isClosing, setIsClosing] = React.useState(false);
 
   //Log
-  const [logData, setLogData] = React.useState(["", "", ""]);
+  const [logData, setLogData] = React.useState([]);
 
   // WebSockets
   const [tableData, setTableData] = React.useState(data);
   const [socket, setSocket] = React.useState(null);
 
   React.useEffect(() => {
-    const newSocket = io("ws://localhost:8000");
+    const newSocket = io("ws://localhost:8000/");
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
       console.log("Connected to server");
     });
 
-    newSocket.on("json_data", (data) => {
+    newSocket.on("report_data", (data) => {
       console.log(data);
       try {
         const message = JSON.parse(data);
-        setTableData((prev) => [...prev, message]);
+        setTableData((prev) => {
+          console.log(prev);
+          if (prev.length > 0) {
+            prev[prev.length - 1].endTime = message.startTime;
+          }
+          return [...prev, message];
+        });
       } catch (error) {
         console.error("Ошибка при парсинге JSON:", error);
       }
     });
 
     newSocket.on("log", (data) => {
-      console.log(data);
+      setLogData((prevLogData) => [data, ...prevLogData]);
     });
 
     newSocket.on("disconnect", () => {
@@ -107,14 +105,6 @@ function CustomDrawer(props) {
               <DocumentScannerIcon />
             </ListItemIcon>
             <ListItemText primary={"Отчёт"} />
-          </ListItemButton>
-        </ListItem>
-        <ListItem key={2} disablePadding>
-          <ListItemButton onClick={() => handleDrawerClick(2)}>
-            <ListItemIcon>
-              <MicIcon />
-            </ListItemIcon>
-            <ListItemText primary={"Запись"} />
           </ListItemButton>
         </ListItem>
       </List>
@@ -201,11 +191,7 @@ function CustomDrawer(props) {
       >
         <Toolbar />
         {/* Сюда пихать элементы */}
-        {panelNumber == 1 ? (
-          <ReportTable tableData={tableData} />
-        ) : (
-          <RecordInput logData={logData} />
-        )}
+        <ReportTable tableData={tableData} logData={logData} />
       </Box>
     </Box>
   );

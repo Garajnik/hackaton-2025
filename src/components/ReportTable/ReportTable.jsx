@@ -5,11 +5,12 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Box, Button, ButtonGroup } from "@mui/material";
+import { Box, Button, ButtonGroup, Divider } from "@mui/material";
 import xlsx from "json-as-xlsx";
 import { mkConfig, generateCsv, download } from "export-to-csv";
+import RecordInput from "../RecordInput/RecordInput";
 
-export default function ReportTable({ tableData }) {
+export default function ReportTable({ tableData, logData }) {
   //Setting for Excel exporter
   let settings = {
     fileName: "Отчёт", // Name of the resulting spreadsheet
@@ -46,43 +47,50 @@ export default function ReportTable({ tableData }) {
 
   return (
     <>
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="simple table">
-          <TableHead>
-            <TableRow>
-              <TableCell>Время начала</TableCell>
-              <TableCell align="right">Время окончания</TableCell>
-              <TableCell align="right">Забой</TableCell>
-              <TableCell align="right">Этап</TableCell>
-              <TableCell align="right">Комментарий</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {tableData.map((row) => (
-              <TableRow
-                key={row.startTime}
-                sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-              >
-                <TableCell component="th" scope="row">
-                  {row.startTime}
-                </TableCell>
-                <TableCell align="right">{row.endTime}</TableCell>
-                <TableCell align="right">{row.stall}</TableCell>
-                <TableCell align="right">{row.stage}</TableCell>
-                <TableCell align="right">{row.comment}</TableCell>
+      <Box marginLeft={20} marginTop={0} marginRight={20}>
+        <h1>Отчёт</h1>
+        <TableContainer component={Paper}>
+          <Table sx={{ minWidth: 650 }} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Время начала</TableCell>
+                <TableCell align="right">Время окончания</TableCell>
+                <TableCell align="right">Забой</TableCell>
+                <TableCell align="right">Этап</TableCell>
+                <TableCell align="right">Комментарий</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Box>
-        <h1>Скачать в формате: </h1>
+            </TableHead>
+            <TableBody>
+              {tableData.map((row) => (
+                <TableRow
+                  key={row.startTime}
+                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                >
+                  <TableCell component="th" scope="row">
+                    {row.startTime}
+                  </TableCell>
+                  <TableCell align="right">{row.endTime}</TableCell>
+                  <TableCell align="right">{row.stall}</TableCell>
+                  <TableCell align="right">{row.stage}</TableCell>
+                  <TableCell align="right">{row.comment}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+      <Box marginLeft={20}>
+        <h1>Скачать отчёт в формате: </h1>
         <ButtonGroup variant="contained" aria-label="Basic button group">
           <Button color="success" onClick={handleExcelExport}>
             Excel
           </Button>
           <Button onClick={handleCSVExport}>CSV</Button>
         </ButtonGroup>
+      </Box>
+      <Box margin={20} marginTop={0}>
+        <h1>Лог</h1>
+        <RecordInput logData={logData}></RecordInput>
       </Box>
     </>
   );
