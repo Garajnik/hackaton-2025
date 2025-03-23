@@ -4,6 +4,7 @@
 # Запуск:
 Сервер:
 ``` Shell
+pip install -r requirements.txt
 python.exe assistant.py
 ```
 Клиент:
