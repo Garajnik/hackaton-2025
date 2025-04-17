@@ -11,3 +11,4 @@ python.exe assistant.py
 ``` Shell
 npm run dev
 ```
+о
